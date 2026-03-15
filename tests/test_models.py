@@ -180,8 +180,8 @@ class TestTransformEnum:
     def test_transform_values(self):
         """Test Transform enum values."""
         assert Transform.NORMAL.value == "Normal"
-        assert Transform.ROTATE_90.value == "_90"
-        assert Transform.ROTATE_180.value == "_180"
+        assert Transform.ROTATE_90.value == "90"
+        assert Transform.ROTATE_180.value == "180"
         assert Transform.FLIPPED.value == "Flipped"
 
 
