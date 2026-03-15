@@ -36,7 +36,8 @@ build-backend = "uv_build"
 dev = [
   "icecream>=2.1.9",
   "pytest-cov>=7.0.0",
-  "ty>=0.0.19",
+  "ruff>=0.15.6",
+  "ty>=0.0.23",
   "vermin>=1.8.0",
 ]
 docs = [
