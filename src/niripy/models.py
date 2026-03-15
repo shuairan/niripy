@@ -186,9 +186,9 @@ class Transform(StrEnum):
     """
 
     NORMAL = "Normal"
-    ROTATE_90 = "_90"
-    ROTATE_180 = "_180"
-    ROTATE_270 = "_270"
+    ROTATE_90 = "90"
+    ROTATE_180 = "180"
+    ROTATE_270 = "270"
     FLIPPED = "Flipped"
     FLIPPED_90 = "Flipped90"
     FLIPPED_180 = "Flipped180"
