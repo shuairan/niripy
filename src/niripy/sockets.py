@@ -280,12 +280,12 @@ class Socket:
             The data read from the socket, decoded as UTF-8. For Niri
                 responses, this will be JSON-formatted.
         """
-        niri_socket = socket.socket(socket.AF_UNIX)
-        niri_socket.connect(str(self.path))
-        file = niri_socket.makefile("rw")
-        _ = file.write('"EventStream"')
-        file.flush()
-        niri_socket.shutdown(SHUT_WR)
+        with socket.socket(socket.AF_UNIX) as niri_socket:
+            niri_socket.connect(str(self.path))
+            with niri_socket.makefile("rw") as file:
+                file.write('"EventStream"')
+                file.flush()
+                niri_socket.shutdown(SHUT_WR)
 
-        for line in file:
-            yield line
+                for line in file:
+                    yield line

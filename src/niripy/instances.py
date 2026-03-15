@@ -1,4 +1,4 @@
-from typing import Any, Literal, override, Callable
+from typing import Any, Literal, override, Generator
 
 from pydantic.alias_generators import to_pascal, to_snake
 
@@ -445,19 +445,32 @@ class Instance:
         """
         return self._request("layers").layers or []
 
-    def subscribe(self, callback: Callable[[NiriEvent], None]):
-        """Subscribe to an event stream """
+    def subscribe(self) -> Generator[NiriEvent, None, None]:
+        """Subscribe to an event stream.
+
+        Yields:
+            NiriEvent: Events received from Niri.
+
+        Example:
+            >>> for event in instance.subscribe():
+            ...     print(event)
+            ...     if condition:
+            ...         break
+        """
         event_stream = self.socket.event_stream()
+        # first message on stream is a reply, no event:
+        reply_json = next(event_stream)
         reply = Reply.model_validate_json(
-            next(event_stream),
+            reply_json,
             context={"instance": self},
         )
+        # Ensure the subscription was successful
+        _ = reply.unwrap()
+
         for line in event_stream:
             try:
-                event = NiriEvent.from_json(
-                    line,
-                    context={"instance": self})
-                callback(event)
+                event = NiriEvent.from_json(line, context={"instance": self})
+                yield event
             except Exception as e:
                 print(f"Error processing event: {e}")
                 continue
