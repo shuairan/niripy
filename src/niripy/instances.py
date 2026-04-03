@@ -1,4 +1,4 @@
-from typing import Any, Literal, override, Generator
+from typing import Any, AsyncGenerator, Generator, Literal, override
 
 from pydantic.alias_generators import to_pascal, to_snake
 
@@ -468,6 +468,35 @@ class Instance:
         _ = reply.unwrap()
 
         for line in event_stream:
+            try:
+                event = NiriEvent.from_json(line, context={"instance": self})
+                yield event
+            except Exception as e:
+                print(f"Error processing event: {e}")
+                continue
+
+    async def asubscribe(self) -> AsyncGenerator[NiriEvent, None]:
+        """Subscribe to the Niri event stream (async, cancellable).
+
+        An async variant of subscribe() that supports clean cancellation via
+        asyncio task.cancel(). Uses socket.async_event_stream() internally.
+
+        Yields:
+            NiriEvent: Events received from Niri.
+
+        Example:
+            >>> async for event in instance.asubscribe():
+            ...     print(event)
+            ...     if condition:
+            ...         break
+        """
+        stream = self.socket.async_event_stream()
+        # first message on stream is a reply, not an event:
+        reply_json = await anext(stream)
+        reply = Reply.model_validate_json(reply_json, context={"instance": self})
+        _ = reply.unwrap()
+
+        async for line in stream:
             try:
                 event = NiriEvent.from_json(line, context={"instance": self})
                 yield event

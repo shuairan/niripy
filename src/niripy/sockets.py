@@ -1,11 +1,12 @@
 from _socket import SHUT_WR
 
+import asyncio
 import json
 import os
 import select
 import socket
 from pathlib import Path
-from typing import Any, override, Generator
+from typing import Any, override, AsyncGenerator, Generator
 
 
 class SocketError(Exception):
@@ -289,3 +290,27 @@ class Socket:
 
                 for line in file:
                     yield line
+
+    async def async_event_stream(self) -> AsyncGenerator[str, None]:
+        """Start an async, cancellable event stream from Niri.
+
+        An async variant of event_stream() that uses asyncio for native
+        cancellation support. Cancel the enclosing asyncio task to stop the
+        stream; the connection is always closed in a finally block.
+
+        Yields:
+            Lines from the Niri event stream, decoded as UTF-8.
+
+        Example:
+            >>> async for line in socket.async_event_stream():
+            ...     print(line)
+        """
+        reader, writer = await asyncio.open_unix_connection(str(self.path))
+        try:
+            writer.write(b'"EventStream"')
+            writer.write_eof()
+            async for line in reader:
+                yield line.decode("utf-8")
+        finally:
+            writer.close()
+            await writer.wait_closed()
