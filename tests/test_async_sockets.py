@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from niripy.events import NiriEvent
+from niripy.instances import Instance
 from niripy.sockets import Socket
 
 
@@ -93,3 +95,49 @@ def test_async_event_stream_closes_writer_on_cancel(mock_env_socket):
             pass
 
     asyncio.run(run())
+
+
+def test_asubscribe_skips_reply_and_yields_events(mock_env_socket):
+    """asubscribe yields NiriEvent objects, consuming the initial reply line."""
+    stream_lines = [
+        '{"Ok":"Handled"}\n',
+        '{"WorkspacesChanged":{"workspaces":[]}}\n',
+        '{"WindowClosed":{"id":123}}\n',
+    ]
+
+    async def fake_stream():
+        for line in stream_lines:
+            yield line
+
+    async def run():
+        with patch.object(Instance, "_request") as mock_req:
+            mock_req.return_value.version = "0.1.0"
+            instance = Instance()
+            with patch.object(instance.socket, "async_event_stream", return_value=fake_stream()):
+                events = []
+                async for event in instance.asubscribe():
+                    events.append(event)
+                return events
+
+    events = asyncio.run(run())
+    assert len(events) == 2
+    assert all(isinstance(e, NiriEvent) for e in events)
+    assert events[0].name == "WorkspacesChanged"
+    assert events[1].name == "WindowClosed"
+
+
+def test_asubscribe_raises_on_bad_reply(mock_env_socket):
+    """asubscribe raises if the initial reply is not Ok."""
+    async def fake_stream():
+        yield '{"Err":"SomeError"}\n'
+
+    async def run():
+        with patch.object(Instance, "_request") as mock_req:
+            mock_req.return_value.version = "0.1.0"
+            instance = Instance()
+            with patch.object(instance.socket, "async_event_stream", return_value=fake_stream()):
+                async for _ in instance.asubscribe():
+                    pass  # should raise before yielding
+
+    with pytest.raises(Exception):
+        asyncio.run(run())
